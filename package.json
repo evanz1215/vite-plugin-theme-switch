@@ -1,0 +1,53 @@
+{
+  "name": "vite-plugin-theme-switch",
+  "version": "0.0.1",
+  "description": "Multi-theme system for Vite + Vue: hard-link shadow directory with theme inheritance (extends) and HMR",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "bin": {
+    "vite-theme": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "vite",
+    "vite-plugin",
+    "vue",
+    "theme",
+    "multi-tenant",
+    "white-label"
+  ],
+  "license": "0BSD",
+  "engines": {
+    "node": ">=20.12"
+  },
+  "peerDependencies": {
+    "vite": ">=5"
+  },
+  "dependencies": {
+    "json5": "^2.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "tsup": "^8.3.5",
+    "typescript": "^5.5.4",
+    "vite": "^6.3.4",
+    "vitest": "^3.0.0"
+  }
+}
