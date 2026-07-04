@@ -1,7 +1,7 @@
 {
   "name": "vite-plugin-theme-switch",
   "version": "0.0.1",
-  "description": "Multi-theme system for Vite + Vue: hard-link shadow directory with theme inheritance (extends) and HMR",
+  "description": "Multi-theme system for Vite (Vue / React): hard-link shadow directory with theme inheritance (extends) and HMR",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -14,7 +14,7 @@
     }
   },
   "bin": {
-    "vite-theme": "./dist/cli.js"
+    "vite-theme": "dist/cli.js"
   },
   "files": [
     "dist"
@@ -29,6 +29,7 @@
     "vite",
     "vite-plugin",
     "vue",
+    "react",
     "theme",
     "multi-tenant",
     "white-label"

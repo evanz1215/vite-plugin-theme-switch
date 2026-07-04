@@ -87,10 +87,30 @@ describe("createShadowHandler", () => {
     await cleanup();
   });
 
-  it("change 事件、ignore 清單、無關路徑一律 no-op", async () => {
+  it("change 事件:同 inode no-op;原子寫入換 inode 後重連", async () => {
+    const { write, handler, at, readRuntime, cleanup } = await setup();
+
+    // 就地寫入:hard link 同 inode 天然同步
+    await write("themes/base/views/Home.vue", "base-home-inplace");
+    await handler("change", at("themes/base/views/Home.vue"));
+    expect(await readRuntime("views/Home.vue")).toBe("base-home-inplace");
+
+    // 原子寫入(temp + rename)換掉 inode → change 事件觸發重連
+    await write("themes/base/views/Home.vue.tmp", "base-home-atomic");
+    await fs.rename(
+      at("themes/base/views/Home.vue.tmp"),
+      at("themes/base/views/Home.vue"),
+    );
+    expect(await readRuntime("views/Home.vue")).toBe("base-home-inplace"); // 斷鏈,還是舊的
+    await handler("change", at("themes/base/views/Home.vue"));
+    expect(await readRuntime("views/Home.vue")).toBe("base-home-atomic"); // 重連後同步
+
+    await cleanup();
+  });
+
+  it("ignore 清單、無關路徑一律 no-op", async () => {
     const { ctx, write, handler, at, readRuntime, cleanup } = await setup();
 
-    // change:hard link 同 inode 天然同步,handler 不動作
     await handler("change", at("themes/client/views/Home.vue"));
     expect(await readRuntime("views/Home.vue")).toBe("base-home");
 
@@ -139,9 +159,19 @@ describe("shadowPlugin", () => {
       (plugin.transformIndexHtml as Function)("<title>=VITE_TITLE=</title>"),
     ).toBe("<title>Client</title>");
 
-    // configureServer:以假 watcher 模擬 Vite server.watcher 事件
+    // configureServer:以假 watcher / moduleGraph 模擬 Vite server
     const watcher = Object.assign(new EventEmitter(), { add: vi.fn() });
-    (plugin.configureServer as Function)({ watcher });
+    const runtimeHome = ctx.runtimeDir.replaceAll("\\", "/") + "/views/Home.vue";
+    const mod = { id: "home" };
+    const server = {
+      watcher,
+      moduleGraph: {
+        getModulesByFile: (f: string) =>
+          f === runtimeHome ? new Set([mod]) : undefined,
+      },
+      reloadModule: vi.fn(),
+    };
+    (plugin.configureServer as Function)(server);
     expect(watcher.add).toHaveBeenCalledWith(ctx.themesDir);
 
     await write("themes/client/views/Home.vue", "client-home");
@@ -149,24 +179,28 @@ describe("shadowPlugin", () => {
     await vi.waitFor(async () =>
       expect(await readRuntime("views/Home.vue")).toBe("client-home"),
     );
+    // themes 事件 → 連結維護後主動 reload 對應的 runtime 模組
+    await vi.waitFor(() =>
+      expect(server.reloadModule).toHaveBeenCalledWith(mod),
+    );
 
     await cleanup();
     void root;
   });
 
-  it("handleHotUpdate:runtime 的 .vue 回傳 modules,themes 的 .vue 回傳 []", async () => {
-    const { ctx, cleanup } = await setup();
+  it("handleHotUpdate:themes / runtime 事件一律抑制(HMR 由 watcher 觸發),其餘不介入", async () => {
+    const { ctx, at, cleanup } = await setup();
     const plugin = shadowPlugin(ctx, () => {});
+    await (plugin.configResolved as Function)({}); // 載入 themeConfig(extends: base)
     const hot = plugin.handleHotUpdate as Function;
+
     const modules = [{ id: "x" }];
+    const runtimeHome =
+      ctx.runtimeDir.replaceAll("\\", "/") + "/views/Home.vue";
 
-    const runtimeVue =
-      ctx.runtimeDir.replaceAll("\\", "/") + "/components/Logo.vue";
-    const themesVue =
-      ctx.themesDir.replaceAll("\\", "/") + "/client/components/Logo.vue";
-
-    expect(hot({ file: runtimeVue, modules })).toBe(modules);
-    expect(hot({ file: themesVue, modules })).toEqual([]);
+    expect(hot({ file: at("themes/client/views/Home.vue"), modules })).toEqual([]);
+    expect(hot({ file: at("themes/base/views/Home.vue"), modules })).toEqual([]);
+    expect(hot({ file: runtimeHome, modules })).toEqual([]);
     expect(hot({ file: "/other/src/App.vue", modules })).toBeUndefined();
 
     await cleanup();

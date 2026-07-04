@@ -1,10 +1,10 @@
 # vite-plugin-theme-switch
 
-Vite + Vue 多主題(白牌 / multi-tenant)系統。以 **hard link 合成的 shadow 目錄** 實現:
+Vite 多主題(白牌 / multi-tenant)系統,框架無關(Vue / React 皆可)。以 **hard link 合成的 shadow 目錄** 實現:
 
 - 🎨 **主題切換** — 一個環境變數決定當前主題,業務程式碼零改動
 - 🧬 **主題繼承(`extends`)** — 客戶主題只放差異檔,其餘自動沿用基底主題
-- ⚡ **即時 HMR** — hard link 共享 inode,編輯主題檔案內容直接觸發 Vite HMR
+- ⚡ **即時 HMR** — 編輯 `themes/` 檔案即時熱更新,自動處理編輯器原子寫入造成的斷鏈
 - 📦 **多主題批次打包** — 一個指令把每個主題各自輸出成可獨立部署的完整站點
 - 🔧 **CLI 管理工具** — 互動式切換、建立、獨立化主題
 
@@ -32,6 +32,15 @@ export default defineThemeConfig(
     plugins: [vue()],
   }),
 );
+```
+
+React 專案只是換掉框架 plugin,其餘完全相同:
+
+```ts
+import react from "@vitejs/plugin-react";
+import { defineThemeConfig } from "vite-plugin-theme-switch";
+
+export default defineThemeConfig({}, { plugins: [react()] });
 ```
 
 ### 2. 在 package.json 加入 CLI script
@@ -76,6 +85,13 @@ themes/
 import Banner from "@theme-components/Banner.vue";
 import Footer from "@theme-components/Footer.vue";
 </script>
+```
+
+React 同理(主題檔放 `.tsx` / `.jsx`):
+
+```tsx
+import Banner from "@theme-components/Banner";
+import Footer from "@theme-components/Footer";
 ```
 
 ### 5. 切換主題並啟動
@@ -230,7 +246,7 @@ declare const DEV: boolean;
 
 啟動時將 `themes/<theme>` 的檔案以 **hard link** 連進 `<runtimeDir>`;若主題設定 `extends`,繼承主題的檔案僅在「未被當前主題覆蓋」時補鏈。`@theme` 系列 alias 指向合成後的目錄,業務程式碼因此對「當前是哪個主題」無感。
 
-因為 hard link 共享 inode,**編輯主題檔案內容時 Vite HMR 直接生效**;Vite dev server 自帶的 watcher 負責檔案「新增/刪除」時的重新連結:
+dev 模式下由 Vite server.watcher 維護連結並觸發 HMR:模組圖裡掛的是 runtime 路徑,`themes/` 的檔案事件在連結維護完成後,由 plugin 對應到 runtime 模組主動 reload(框架無關,`.vue`/`.tsx`/CSS 通用)。編輯器以原子寫入存檔(先寫暫存檔再 rename,如 JetBrains 的 safe write)會換掉 inode 造成 hard link 指向舊內容,plugin 會比對 inode 自動重連。
 
 | 事件 | 行為 |
 | --- | --- |
@@ -238,6 +254,7 @@ declare const DEV: boolean;
 | 主題刪除檔案 | 移除 runtime 檔;extends 有同名檔則回退連 extends 版本 |
 | extends 新增檔案 | 僅當主題沒有同名檔時補鏈 |
 | extends 刪除檔案 | 僅當主題沒有同名檔時斷鏈 |
+| 檔案內容變更 | 同 inode 天然生效;原子寫入換 inode 時自動重連 |
 
 ## 限制
 
