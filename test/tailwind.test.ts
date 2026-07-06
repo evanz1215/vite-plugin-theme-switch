@@ -14,7 +14,7 @@ const setup = async (tailwind: boolean | { presetPath?: string } = true) => {
     await fs.mkdir(path.dirname(p), { recursive: true });
     await fs.writeFile(p, content);
   };
-  const ctx = resolveOptions({ tailwind }, { VITE_THEME: "client" }, root);
+  const ctx = resolveOptions({ tailwind }, { VITE_BRAND: "client" }, root);
   return {
     root,
     ctx,
@@ -27,7 +27,7 @@ const setup = async (tailwind: boolean | { presetPath?: string } = true) => {
 describe("tailwindPlugin", () => {
   it("等 shadowReady 後才同步:runtime 有設定檔就複製", async () => {
     const { ctx, write, presetPath, cleanup } = await setup();
-    await write(".runtime/theme/tailwind.config.ts", "export default { a: 1 };");
+    await write(".runtime/brand/tailwind.config.ts", "export default { a: 1 };");
 
     let ready!: () => void;
     const shadowReady = new Promise<void>((r) => (ready = r));
@@ -73,14 +73,14 @@ describe("tailwindPlugin", () => {
     (plugin.configureServer as Function)({ watcher });
 
     expect(watcher.add).not.toHaveBeenCalled();
-    expect(existsSync(path.join(root, ".theme-env"))).toBe(false);
+    expect(existsSync(path.join(root, ".brand-env"))).toBe(false);
 
     await cleanup();
   });
 
-  it("dev:server.watcher 收到主題 tailwind.config.ts 變更時重新同步", async () => {
+  it("dev:server.watcher 收到品牌 tailwind.config.ts 變更時重新同步", async () => {
     const { ctx, write, presetPath, cleanup } = await setup();
-    await write(".runtime/theme/tailwind.config.ts", "export default { v: 1 };");
+    await write(".runtime/brand/tailwind.config.ts", "export default { v: 1 };");
 
     const plugin = tailwindPlugin(ctx, Promise.resolve());
     await (plugin.configResolved as Function)();
@@ -88,23 +88,23 @@ describe("tailwindPlugin", () => {
 
     const watcher = Object.assign(new EventEmitter(), { add: vi.fn() });
     (plugin.configureServer as Function)({ watcher });
-    const themeTwConfig = path.join(
-      ctx.themesDir,
+    const brandTwConfig = path.join(
+      ctx.brandsDir,
       "client",
       "tailwind.config.ts",
     );
-    expect(watcher.add).toHaveBeenCalledWith(themeTwConfig);
+    expect(watcher.add).toHaveBeenCalledWith(brandTwConfig);
 
-    // 模擬主題設定變更(hard link 下 runtime 檔內容已同步),事件觸發重新複製
-    await write(".runtime/theme/tailwind.config.ts", "export default { v: 2 };");
-    watcher.emit("all", "change", themeTwConfig);
+    // 模擬品牌設定變更(hard link 下 runtime 檔內容已同步),事件觸發重新複製
+    await write(".runtime/brand/tailwind.config.ts", "export default { v: 2 };");
+    watcher.emit("all", "change", brandTwConfig);
     await vi.waitFor(() =>
       expect(readFileSync(presetPath, "utf8")).toContain("v: 2"),
     );
 
     // 無關檔案的事件不觸發
-    await write(".runtime/theme/tailwind.config.ts", "export default { v: 3 };");
-    watcher.emit("all", "change", path.join(ctx.themesDir, "client", "other.ts"));
+    await write(".runtime/brand/tailwind.config.ts", "export default { v: 3 };");
+    watcher.emit("all", "change", path.join(ctx.brandsDir, "client", "other.ts"));
     await new Promise((r) => setTimeout(r, 20));
     expect(readFileSync(presetPath, "utf8")).toContain("v: 2");
 

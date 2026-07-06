@@ -1,7 +1,7 @@
 {
-  "name": "vite-plugin-theme-switch",
-  "version": "0.0.2",
-  "description": "Multi-theme system for Vite (Vue / React): hard-link shadow directory with theme inheritance (extends) and HMR",
+  "name": "vite-plugin-white-label",
+  "version": "0.0.1",
+  "description": "White-label / multi-brand system for Vite (Vue / React): hard-link shadow directory with brand inheritance (extends) and HMR",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -14,7 +14,7 @@
     }
   },
   "bin": {
-    "vite-theme": "dist/cli.js"
+    "vite-brand": "dist/cli.js"
   },
   "files": [
     "dist"
@@ -30,9 +30,9 @@
     "vite-plugin",
     "vue",
     "react",
-    "theme",
+    "white-label",
     "multi-tenant",
-    "white-label"
+    "multi-brand"
   ],
   "license": "0BSD",
   "engines": {

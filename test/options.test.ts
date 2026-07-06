@@ -2,30 +2,30 @@ import { describe, expect, it } from "vitest";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
-import { normalizePath, readThemeConfig, resolveOptions } from "../src/options";
+import { normalizePath, readBrandConfig, resolveOptions } from "../src/options";
 
 describe("resolveOptions", () => {
   const root = "/proj";
 
-  it("預設值:路徑解析為絕對、theme 讀 VITE_THEME、tailwind 關閉", () => {
-    const ctx = resolveOptions({}, { VITE_THEME: "client" }, root);
+  it("預設值:路徑解析為絕對、brand 讀 VITE_BRAND、tailwind 關閉", () => {
+    const ctx = resolveOptions({}, { VITE_BRAND: "client" }, root);
 
-    expect(ctx.themesDir).toBe(path.resolve(root, "./themes"));
-    expect(ctx.runtimeDir).toBe(path.resolve(root, "./.runtime/theme"));
-    expect(ctx.theme).toBe("client");
+    expect(ctx.brandsDir).toBe(path.resolve(root, "./brands"));
+    expect(ctx.runtimeDir).toBe(path.resolve(root, "./.runtime/brand"));
+    expect(ctx.brand).toBe("client");
     expect(ctx.ignore).toEqual([".DS_Store", "public/"]);
     expect(ctx.tailwind).toBe(false);
     expect(ctx.aliases).toEqual({});
   });
 
-  it("自訂 envKey 與 defaultTheme fallback", () => {
+  it("自訂 envKey 與 defaultBrand fallback", () => {
     expect(
-      resolveOptions({ envKey: "MY_THEME" }, { MY_THEME: "a" }, root).theme,
+      resolveOptions({ envKey: "MY_BRAND" }, { MY_BRAND: "a" }, root).brand,
     ).toBe("a");
-    expect(resolveOptions({ defaultTheme: "base" }, {}, root).theme).toBe(
+    expect(resolveOptions({ defaultBrand: "base" }, {}, root).brand).toBe(
       "base",
     );
-    expect(resolveOptions({}, {}, root).theme).toBe("default");
+    expect(resolveOptions({}, {}, root).brand).toBe("default");
   });
 
   it("tailwind:true 與空物件用預設 presetPath,presetPath 可自訂", () => {
@@ -34,7 +34,7 @@ describe("resolveOptions", () => {
       return tw ? tw.presetPath : tw;
     };
 
-    const defaultPath = path.resolve(root, "./.theme-env/tailwind.preset.ts");
+    const defaultPath = path.resolve(root, "./.brand-env/tailwind.preset.ts");
     expect(preset(true)).toBe(defaultPath);
     expect(preset({})).toBe(defaultPath);
     expect(preset({ presetPath: "./tw/preset.ts" })).toBe(
@@ -43,10 +43,10 @@ describe("resolveOptions", () => {
     expect(preset(false)).toBe(false);
   });
 
-  it("自訂 themesDir / runtimeDir / ignore / aliases", () => {
+  it("自訂 brandsDir / runtimeDir / ignore / aliases", () => {
     const ctx = resolveOptions(
       {
-        themesDir: "./skins",
+        brandsDir: "./skins",
         runtimeDir: "./.tmp/t",
         ignore: ["x/"],
         aliases: { "@stores": "./src/stores" },
@@ -55,14 +55,14 @@ describe("resolveOptions", () => {
       root,
     );
 
-    expect(ctx.themesDir).toBe(path.resolve(root, "./skins"));
+    expect(ctx.brandsDir).toBe(path.resolve(root, "./skins"));
     expect(ctx.runtimeDir).toBe(path.resolve(root, "./.tmp/t"));
     expect(ctx.ignore).toEqual(["x/"]);
     expect(ctx.aliases).toEqual({ "@stores": "./src/stores" });
   });
 });
 
-describe("readThemeConfig", () => {
+describe("readBrandConfig", () => {
   it("讀 config.jsonc(可含註解),沒有時 fallback 到 config.json,都沒有回傳 {}", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "vpt-opt-"));
     const write = async (rel: string, content: string) => {
@@ -72,21 +72,21 @@ describe("readThemeConfig", () => {
     };
 
     await write(
-      "themes/a/config.jsonc",
+      "brands/a/config.jsonc",
       `{\n  // 註解\n  "title": "A",\n  "extends": "base",\n}`,
     );
-    await write("themes/a/config.json", `{ "title": "ignored" }`); // jsonc 優先
-    await write("themes/b/config.json", `{ "title": "B" }`);
-    await fs.mkdir(path.join(root, "themes/c"), { recursive: true });
+    await write("brands/a/config.json", `{ "title": "ignored" }`); // jsonc 優先
+    await write("brands/b/config.json", `{ "title": "B" }`);
+    await fs.mkdir(path.join(root, "brands/c"), { recursive: true });
 
-    const themesDir = path.join(root, "themes");
-    expect(readThemeConfig(themesDir, "a")).toEqual({
+    const brandsDir = path.join(root, "brands");
+    expect(readBrandConfig(brandsDir, "a")).toEqual({
       title: "A",
       extends: "base",
     });
-    expect(readThemeConfig(themesDir, "b")).toEqual({ title: "B" });
-    expect(readThemeConfig(themesDir, "c")).toEqual({});
-    expect(readThemeConfig(themesDir, "missing")).toEqual({});
+    expect(readBrandConfig(brandsDir, "b")).toEqual({ title: "B" });
+    expect(readBrandConfig(brandsDir, "c")).toEqual({});
+    expect(readBrandConfig(brandsDir, "missing")).toEqual({});
 
     await fs.rm(root, { recursive: true, force: true });
   });

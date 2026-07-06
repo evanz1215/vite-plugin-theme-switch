@@ -2,19 +2,19 @@ import type { Plugin } from "vite";
 import fs from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
-import type { ResolvedThemeOptions } from "../types";
+import type { ResolvedBrandOptions } from "../types";
 import { normalizePath } from "../options";
 
 /**
- * Tailwind 主題 preset 同步。
+ * Tailwind 品牌 preset 同步。
  * 移植自 .xgi/core/vite/plugins/xgi-plugin-tailwindcss。
  *
  * 使用端的根 tailwind.config.ts 引用 ctx.tailwind.presetPath;
  * 本 plugin 在 shadow 建好後(shadowReady resolve)把 <runtimeDir>/tailwind.config.ts
- * 複製過去,dev 模式下由 Vite server.watcher 監聽主題設定變更後重寫。
+ * 複製過去,dev 模式下由 Vite server.watcher 監聽品牌設定變更後重寫。
  */
 export const tailwindPlugin = (
-  ctx: ResolvedThemeOptions,
+  ctx: ResolvedBrandOptions,
   shadowReady: Promise<void>,
 ): Plugin => {
   const tw = ctx.tailwind;
@@ -26,13 +26,13 @@ export const tailwindPlugin = (
     if (existsSync(src)) {
       await fs.copyFile(src, tw.presetPath);
     } else if (!existsSync(tw.presetPath)) {
-      // 主題沒有 tailwind.config.ts 時給空 preset,讓根設定的 import 不會失敗
+      // 品牌沒有 tailwind.config.ts 時給空 preset,讓根設定的 import 不會失敗
       await fs.writeFile(tw.presetPath, "export default {};\n");
     }
   };
 
   return {
-    name: "vite-plugin-theme-switch:tailwind",
+    name: "vite-plugin-white-label:tailwind",
     enforce: "post",
 
     async configResolved() {
@@ -43,15 +43,15 @@ export const tailwindPlugin = (
 
     configureServer(server) {
       if (!tw) return;
-      // watch 主題來源檔而非 runtime 連結,add/change 都重新同步
-      const themeTwConfig = path.join(
-        ctx.themesDir,
-        ctx.theme,
+      // watch 品牌來源檔而非 runtime 連結,add/change 都重新同步
+      const brandTwConfig = path.join(
+        ctx.brandsDir,
+        ctx.brand,
         "tailwind.config.ts",
       );
-      server.watcher.add(themeTwConfig);
+      server.watcher.add(brandTwConfig);
       server.watcher.on("all", (_evt, file) => {
-        if (normalizePath(file) === normalizePath(themeTwConfig)) {
+        if (normalizePath(file) === normalizePath(brandTwConfig)) {
           void sync();
         }
       });

@@ -13,12 +13,12 @@ const setup = async () => {
     await fs.writeFile(p, content);
   };
 
-  await write("themes/base/components/Logo.vue", "base-logo");
-  await write("themes/base/views/Home.vue", "base-home");
-  await write("themes/base/public/favicon.ico", "icon");
-  await write("themes/client/components/Logo.vue", "client-logo");
+  await write("brands/base/components/Logo.vue", "base-logo");
+  await write("brands/base/views/Home.vue", "base-home");
+  await write("brands/base/public/favicon.ico", "icon");
+  await write("brands/client/components/Logo.vue", "client-logo");
 
-  const ctx = resolveOptions({}, { VITE_THEME: "client" }, root);
+  const ctx = resolveOptions({}, { VITE_BRAND: "client" }, root);
   return { root, ctx };
 };
 
@@ -37,7 +37,7 @@ describe("createShadow", () => {
 
     // hard link:同 inode,改來源內容 runtime 立即同步
     await fs.writeFile(
-      path.join(root, "themes/client/components/Logo.vue"),
+      path.join(root, "brands/client/components/Logo.vue"),
       "client-logo-v2",
     );
     expect(await read("components/Logo.vue")).toBe("client-logo-v2");
@@ -45,7 +45,7 @@ describe("createShadow", () => {
     await fs.rm(root, { recursive: true, force: true });
   });
 
-  it("無 extends 時只鋪當前主題", async () => {
+  it("無 extends 時只鋪當前品牌", async () => {
     const { root, ctx } = await setup();
 
     await createShadow(ctx, {});

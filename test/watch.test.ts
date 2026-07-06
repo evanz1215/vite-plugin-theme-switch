@@ -19,21 +19,21 @@ const setup = async () => {
     await fs.writeFile(p, content);
   };
 
-  await write("themes/base/views/Home.vue", "base-home");
+  await write("brands/base/views/Home.vue", "base-home");
   await write(
-    "themes/client/config.jsonc",
+    "brands/client/config.jsonc",
     `{ "title": "Client", "extends": "base" }`,
   );
 
-  const ctx = resolveOptions({}, { VITE_THEME: "client" }, root);
-  const themeConfig = { extends: "base" };
-  await createShadow(ctx, themeConfig);
+  const ctx = resolveOptions({}, { VITE_BRAND: "client" }, root);
+  const brandConfig = { extends: "base" };
+  await createShadow(ctx, brandConfig);
 
   return {
     root,
     ctx,
     write,
-    handler: createShadowHandler(ctx, themeConfig),
+    handler: createShadowHandler(ctx, brandConfig),
     at: (rel: string) => path.join(root, rel),
     readRuntime: (rel: string) =>
       fs.readFile(path.join(ctx.runtimeDir, rel), "utf8"),
@@ -42,46 +42,46 @@ const setup = async () => {
 };
 
 describe("createShadowHandler", () => {
-  it("theme 新增覆蓋檔 → 補鏈;刪除 → 回退連 extends 版本", async () => {
+  it("brand 新增覆蓋檔 → 補鏈;刪除 → 回退連 extends 版本", async () => {
     const { write, handler, at, readRuntime, cleanup } = await setup();
 
     expect(await readRuntime("views/Home.vue")).toBe("base-home");
 
     // 客戶新增覆蓋檔 → runtime 改連客戶版本
-    await write("themes/client/views/Home.vue", "client-home");
-    await handler("add", at("themes/client/views/Home.vue"));
+    await write("brands/client/views/Home.vue", "client-home");
+    await handler("add", at("brands/client/views/Home.vue"));
     expect(await readRuntime("views/Home.vue")).toBe("client-home");
 
     // 客戶刪除覆蓋檔 → 回退連 extends 版本
-    await fs.unlink(at("themes/client/views/Home.vue"));
-    await handler("unlink", at("themes/client/views/Home.vue"));
+    await fs.unlink(at("brands/client/views/Home.vue"));
+    await handler("unlink", at("brands/client/views/Home.vue"));
     expect(await readRuntime("views/Home.vue")).toBe("base-home");
 
     await cleanup();
   });
 
-  it("extends 新增/刪除:僅當 theme 沒有同名檔時才影響 runtime", async () => {
+  it("extends 新增/刪除:僅當 brand 沒有同名檔時才影響 runtime", async () => {
     const { ctx, write, handler, at, readRuntime, cleanup } = await setup();
 
     // extends 新增檔案(客戶沒有)→ 補鏈
-    await write("themes/base/views/About.vue", "base-about");
-    await handler("add", at("themes/base/views/About.vue"));
+    await write("brands/base/views/About.vue", "base-about");
+    await handler("add", at("brands/base/views/About.vue"));
     expect(await readRuntime("views/About.vue")).toBe("base-about");
 
     // extends 刪除檔案(客戶沒有)→ 斷鏈
-    await fs.unlink(at("themes/base/views/About.vue"));
-    await handler("unlink", at("themes/base/views/About.vue"));
+    await fs.unlink(at("brands/base/views/About.vue"));
+    await handler("unlink", at("brands/base/views/About.vue"));
     expect(existsSync(path.join(ctx.runtimeDir, "views/About.vue"))).toBe(
       false,
     );
 
     // 客戶有同名檔 → extends 的變動不影響 runtime
-    await write("themes/client/views/Home.vue", "client-home");
-    await handler("add", at("themes/client/views/Home.vue"));
-    await write("themes/base/views/Home.vue", "base-home-v2");
-    await handler("add", at("themes/base/views/Home.vue"));
+    await write("brands/client/views/Home.vue", "client-home");
+    await handler("add", at("brands/client/views/Home.vue"));
+    await write("brands/base/views/Home.vue", "base-home-v2");
+    await handler("add", at("brands/base/views/Home.vue"));
     expect(await readRuntime("views/Home.vue")).toBe("client-home");
-    await handler("unlink", at("themes/base/views/Home.vue"));
+    await handler("unlink", at("brands/base/views/Home.vue"));
     expect(await readRuntime("views/Home.vue")).toBe("client-home");
 
     await cleanup();
@@ -91,18 +91,18 @@ describe("createShadowHandler", () => {
     const { write, handler, at, readRuntime, cleanup } = await setup();
 
     // 就地寫入:hard link 同 inode 天然同步
-    await write("themes/base/views/Home.vue", "base-home-inplace");
-    await handler("change", at("themes/base/views/Home.vue"));
+    await write("brands/base/views/Home.vue", "base-home-inplace");
+    await handler("change", at("brands/base/views/Home.vue"));
     expect(await readRuntime("views/Home.vue")).toBe("base-home-inplace");
 
     // 原子寫入(temp + rename)換掉 inode → change 事件觸發重連
-    await write("themes/base/views/Home.vue.tmp", "base-home-atomic");
+    await write("brands/base/views/Home.vue.tmp", "base-home-atomic");
     await fs.rename(
-      at("themes/base/views/Home.vue.tmp"),
-      at("themes/base/views/Home.vue"),
+      at("brands/base/views/Home.vue.tmp"),
+      at("brands/base/views/Home.vue"),
     );
     expect(await readRuntime("views/Home.vue")).toBe("base-home-inplace"); // 斷鏈,還是舊的
-    await handler("change", at("themes/base/views/Home.vue"));
+    await handler("change", at("brands/base/views/Home.vue"));
     expect(await readRuntime("views/Home.vue")).toBe("base-home-atomic"); // 重連後同步
 
     await cleanup();
@@ -111,20 +111,20 @@ describe("createShadowHandler", () => {
   it("ignore 清單、無關路徑一律 no-op", async () => {
     const { ctx, write, handler, at, readRuntime, cleanup } = await setup();
 
-    await handler("change", at("themes/client/views/Home.vue"));
+    await handler("change", at("brands/client/views/Home.vue"));
     expect(await readRuntime("views/Home.vue")).toBe("base-home");
 
     // ignore 清單(.DS_Store、public/)
-    await write("themes/client/.DS_Store", "junk");
-    await handler("add", at("themes/client/.DS_Store"));
-    await write("themes/client/public/favicon.ico", "icon");
-    await handler("add", at("themes/client/public/favicon.ico"));
+    await write("brands/client/.DS_Store", "junk");
+    await handler("add", at("brands/client/.DS_Store"));
+    await write("brands/client/public/favicon.ico", "icon");
+    await handler("add", at("brands/client/public/favicon.ico"));
     expect(existsSync(path.join(ctx.runtimeDir, ".DS_Store"))).toBe(false);
     expect(
       existsSync(path.join(ctx.runtimeDir, "public/favicon.ico")),
     ).toBe(false);
 
-    // themes 之外的路徑(server.watcher 會看到整個專案)
+    // brands 之外的路徑(server.watcher 會看到整個專案)
     await write("src/App.vue", "app");
     await handler("add", at("src/App.vue"));
     expect(existsSync(path.join(ctx.runtimeDir, "../src/App.vue"))).toBe(
@@ -145,9 +145,9 @@ describe("shadowPlugin", () => {
     const onReady = vi.fn();
     const plugin = shadowPlugin(ctx, onReady);
 
-    // config:publicDir 指向當前主題的 public
+    // config:publicDir 指向當前品牌的 public
     const conf = (plugin.config as Function)();
-    expect(conf.publicDir).toBe(path.join(ctx.themesDir, "client", "public"));
+    expect(conf.publicDir).toBe(path.join(ctx.brandsDir, "client", "public"));
 
     await fs.rm(ctx.runtimeDir, { recursive: true, force: true });
     await (plugin.configResolved as Function)({ mode: "development" });
@@ -172,14 +172,14 @@ describe("shadowPlugin", () => {
       reloadModule: vi.fn(),
     };
     (plugin.configureServer as Function)(server);
-    expect(watcher.add).toHaveBeenCalledWith(ctx.themesDir);
+    expect(watcher.add).toHaveBeenCalledWith(ctx.brandsDir);
 
-    await write("themes/client/views/Home.vue", "client-home");
-    watcher.emit("all", "add", at("themes/client/views/Home.vue"));
+    await write("brands/client/views/Home.vue", "client-home");
+    watcher.emit("all", "add", at("brands/client/views/Home.vue"));
     await vi.waitFor(async () =>
       expect(await readRuntime("views/Home.vue")).toBe("client-home"),
     );
-    // themes 事件 → 連結維護後主動 reload 對應的 runtime 模組
+    // brands 事件 → 連結維護後主動 reload 對應的 runtime 模組
     await vi.waitFor(() =>
       expect(server.reloadModule).toHaveBeenCalledWith(mod),
     );
@@ -188,18 +188,18 @@ describe("shadowPlugin", () => {
     void root;
   });
 
-  it("handleHotUpdate:themes / runtime 事件一律抑制(HMR 由 watcher 觸發),其餘不介入", async () => {
+  it("handleHotUpdate:brands / runtime 事件一律抑制(HMR 由 watcher 觸發),其餘不介入", async () => {
     const { ctx, at, cleanup } = await setup();
     const plugin = shadowPlugin(ctx, () => {});
-    await (plugin.configResolved as Function)({}); // 載入 themeConfig(extends: base)
+    await (plugin.configResolved as Function)({}); // 載入 brandConfig(extends: base)
     const hot = plugin.handleHotUpdate as Function;
 
     const modules = [{ id: "x" }];
     const runtimeHome =
       ctx.runtimeDir.replaceAll("\\", "/") + "/views/Home.vue";
 
-    expect(hot({ file: at("themes/client/views/Home.vue"), modules })).toEqual([]);
-    expect(hot({ file: at("themes/base/views/Home.vue"), modules })).toEqual([]);
+    expect(hot({ file: at("brands/client/views/Home.vue"), modules })).toEqual([]);
+    expect(hot({ file: at("brands/base/views/Home.vue"), modules })).toEqual([]);
     expect(hot({ file: runtimeHome, modules })).toEqual([]);
     expect(hot({ file: "/other/src/App.vue", modules })).toBeUndefined();
 

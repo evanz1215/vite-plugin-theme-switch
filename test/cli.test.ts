@@ -5,14 +5,14 @@ import os from "os";
 import path from "path";
 import { PassThrough } from "stream";
 import {
-  createTheme,
-  isolateTheme,
-  listThemes,
-  switchTheme,
+  createBrand,
+  isolateBrand,
+  listBrands,
+  switchBrand,
   type CliContext,
 } from "../src/cli/actions";
 import { run } from "../src/cli/run";
-import { readThemeConfig } from "../src/options";
+import { readBrandConfig } from "../src/options";
 
 const setup = async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "vpt-cli-"));
@@ -22,20 +22,20 @@ const setup = async () => {
     await fs.writeFile(p, content);
   };
 
-  await write("themes/base/config.jsonc", `{ "title": "Base" }`);
-  await write("themes/base/components/Logo.vue", "base-logo");
-  await write("themes/base/views/Home.vue", "base-home");
-  await write("themes/base/public/favicon.ico", "icon");
+  await write("brands/base/config.jsonc", `{ "title": "Base" }`);
+  await write("brands/base/components/Logo.vue", "base-logo");
+  await write("brands/base/views/Home.vue", "base-home");
+  await write("brands/base/public/favicon.ico", "icon");
   await write(
-    "themes/client/config.jsonc",
+    "brands/client/config.jsonc",
     `{ "title": "Client", "extends": "base" }`,
   );
-  await write("themes/client/components/Logo.vue", "client-logo");
+  await write("brands/client/components/Logo.vue", "client-logo");
 
   const ctx: CliContext = {
-    themesDir: path.join(root, "themes"),
+    brandsDir: path.join(root, "brands"),
     envFile: path.join(root, ".env.development"),
-    envKey: "VITE_THEME",
+    envKey: "VITE_BRAND",
   };
   return { root, ctx };
 };
@@ -52,80 +52,80 @@ const runCli = async (argv: string[], stdin = "") => {
 };
 
 describe("cli actions", () => {
-  it("switchTheme 改寫主題變數並保留其他 key", async () => {
+  it("switchBrand 改寫品牌變數並保留其他 key", async () => {
     const { root, ctx } = await setup();
-    await fs.writeFile(ctx.envFile, "VITE_THEME=base\nVITE_OTHER=keep\n");
+    await fs.writeFile(ctx.envFile, "VITE_BRAND=base\nVITE_OTHER=keep\n");
 
-    switchTheme(ctx, "client");
+    switchBrand(ctx, "client");
 
     const env = readFileSync(ctx.envFile, "utf8");
-    expect(env).toContain("VITE_THEME=client");
+    expect(env).toContain("VITE_BRAND=client");
     expect(env).toContain("VITE_OTHER=keep");
 
     await fs.rm(root, { recursive: true, force: true });
   });
 
-  it("switchTheme:env 檔不存在時直接建立", async () => {
+  it("switchBrand:env 檔不存在時直接建立", async () => {
     const { root, ctx } = await setup();
 
-    switchTheme(ctx, "client");
+    switchBrand(ctx, "client");
 
-    expect(readFileSync(ctx.envFile, "utf8")).toBe("VITE_THEME=client\n");
+    expect(readFileSync(ctx.envFile, "utf8")).toBe("VITE_BRAND=client\n");
 
     await fs.rm(root, { recursive: true, force: true });
   });
 
-  it("createTheme 繼承模式:只建 config.jsonc", async () => {
+  it("createBrand 繼承模式:只建 config.jsonc", async () => {
     const { root, ctx } = await setup();
 
-    await createTheme(ctx, "client-b", "base", false);
+    await createBrand(ctx, "client-b", "base", false);
 
-    expect(readThemeConfig(ctx.themesDir, "client-b")).toEqual({
+    expect(readBrandConfig(ctx.brandsDir, "client-b")).toEqual({
       title: "client-b",
       extends: "base",
     });
-    const files = await fs.readdir(path.join(ctx.themesDir, "client-b"));
+    const files = await fs.readdir(path.join(ctx.brandsDir, "client-b"));
     expect(files).toEqual(["config.jsonc"]);
 
     await fs.rm(root, { recursive: true, force: true });
   });
 
-  it("createTheme isolate 模式:完整複製含 extends 補檔,不設 extends", async () => {
+  it("createBrand isolate 模式:完整複製含 extends 補檔,不設 extends", async () => {
     const { root, ctx } = await setup();
 
-    await createTheme(ctx, "client-full", "client", true);
+    await createBrand(ctx, "client-full", "client", true);
 
     const read = (rel: string) =>
-      readFileSync(path.join(ctx.themesDir, "client-full", rel), "utf8");
+      readFileSync(path.join(ctx.brandsDir, "client-full", rel), "utf8");
     expect(read("components/Logo.vue")).toBe("client-logo"); // 來源覆蓋優先
     expect(read("views/Home.vue")).toBe("base-home"); // extends 補檔
-    const config = readThemeConfig(ctx.themesDir, "client-full");
+    const config = readBrandConfig(ctx.brandsDir, "client-full");
     expect(config.extends).toBeUndefined();
     expect(config.title).toBe("client-full");
     expect(
-      existsSync(path.join(ctx.themesDir, "client-full", "public")),
+      existsSync(path.join(ctx.brandsDir, "client-full", "public")),
     ).toBe(false);
 
     await fs.rm(root, { recursive: true, force: true });
   });
 
-  it("isolateTheme 實體化 extends 並移除設定;已存在的主題不接受重複建立", async () => {
+  it("isolateBrand 實體化 extends 並移除設定;已存在的品牌不接受重複建立", async () => {
     const { root, ctx } = await setup();
 
-    await isolateTheme(ctx, "client");
+    await isolateBrand(ctx, "client");
 
     const read = (rel: string) =>
-      readFileSync(path.join(ctx.themesDir, "client", rel), "utf8");
+      readFileSync(path.join(ctx.brandsDir, "client", rel), "utf8");
     expect(read("components/Logo.vue")).toBe("client-logo"); // 自己的覆蓋檔不被蓋掉
     expect(read("views/Home.vue")).toBe("base-home"); // 補進來
-    expect(readThemeConfig(ctx.themesDir, "client").extends).toBeUndefined();
+    expect(readBrandConfig(ctx.brandsDir, "client").extends).toBeUndefined();
 
-    await expect(createTheme(ctx, "client", "base", false)).rejects.toThrow(
-      "主題已存在",
+    await expect(createBrand(ctx, "client", "base", false)).rejects.toThrow(
+      "品牌已存在",
     );
-    await expect(isolateTheme(ctx, "base")).rejects.toThrow("沒有 extends");
+    await expect(isolateBrand(ctx, "base")).rejects.toThrow("沒有 extends");
 
-    expect((await listThemes(ctx.themesDir)).map((t) => t.name)).toEqual([
+    expect((await listBrands(ctx.brandsDir)).map((t) => t.name)).toEqual([
       "base",
       "client",
     ]);
@@ -136,60 +136,60 @@ describe("cli actions", () => {
 
 describe("cli run", () => {
   it("無指令或 --help 印出用法", async () => {
-    expect(await runCli([])).toContain("vite-theme <command>");
-    expect(await runCli(["--help"])).toContain("vite-theme <command>");
+    expect(await runCli([])).toContain("vite-brand <command>");
+    expect(await runCli(["--help"])).toContain("vite-brand <command>");
   });
 
-  it("未知指令 / 不存在的主題 / 空 build 皆丟錯", async () => {
+  it("未知指令 / 不存在的品牌 / 空 build 皆丟錯", async () => {
     const { root, ctx } = await setup();
-    const base = ["--dir", ctx.themesDir, "--env-file", ctx.envFile];
+    const base = ["--dir", ctx.brandsDir, "--env-file", ctx.envFile];
 
     await expect(runCli(["nope", ...base])).rejects.toThrow("未知指令");
     await expect(runCli(["switch", "ghost", ...base])).rejects.toThrow(
-      "主題不存在:ghost",
+      "品牌不存在:ghost",
     );
     await expect(runCli(["build", ...base])).rejects.toThrow(
-      "build 需要至少一個主題",
+      "build 需要至少一個品牌",
     );
     await expect(runCli(["build", "ghost", ...base])).rejects.toThrow(
-      "主題不存在:ghost",
+      "品牌不存在:ghost",
     );
 
     await fs.rm(root, { recursive: true, force: true });
   });
 
-  it("switch <theme>:非互動直接切換", async () => {
+  it("switch <brand>:非互動直接切換", async () => {
     const { root, ctx } = await setup();
 
     const out = await runCli([
       "switch",
       "client",
       "--dir",
-      ctx.themesDir,
+      ctx.brandsDir,
       "--env-file",
       ctx.envFile,
     ]);
 
-    expect(out).toContain("已切換主題:client");
-    expect(readFileSync(ctx.envFile, "utf8")).toContain("VITE_THEME=client");
+    expect(out).toContain("已切換品牌:client");
+    expect(readFileSync(ctx.envFile, "utf8")).toContain("VITE_BRAND=client");
 
     await fs.rm(root, { recursive: true, force: true });
   });
 
-  it("switch 互動選單:列出全部主題,當前主題標示且不可選", async () => {
+  it("switch 互動選單:列出全部品牌,當前品牌標示且不可選", async () => {
     const { root, ctx } = await setup();
-    await fs.writeFile(ctx.envFile, "VITE_THEME=base\n");
+    await fs.writeFile(ctx.envFile, "VITE_BRAND=base\n");
 
     // 當前是 base → 照列但選 1 被拒 → 改選 2(client)
     const out = await runCli(
-      ["switch", "--dir", ctx.themesDir, "--env-file", ctx.envFile],
+      ["switch", "--dir", ctx.brandsDir, "--env-file", ctx.envFile],
       "1\n2\n",
     );
 
-    expect(out).toContain("1) base (當前主題)");
+    expect(out).toContain("1) base (當前品牌)");
     expect(out).toContain("2) client");
     expect(out).toContain("該選項不可選");
-    expect(readFileSync(ctx.envFile, "utf8")).toContain("VITE_THEME=client");
+    expect(readFileSync(ctx.envFile, "utf8")).toContain("VITE_BRAND=client");
 
     await fs.rm(root, { recursive: true, force: true });
   });
@@ -198,17 +198,17 @@ describe("cli run", () => {
     const { root, ctx } = await setup();
 
     const out = await runCli(
-      ["switch", "--dir", ctx.themesDir, "--env-file", ctx.envFile],
+      ["switch", "--dir", ctx.brandsDir, "--env-file", ctx.envFile],
       "99\n2\n",
     );
 
     expect(out).toContain("無效的選項");
-    expect(readFileSync(ctx.envFile, "utf8")).toContain("VITE_THEME=client");
+    expect(readFileSync(ctx.envFile, "utf8")).toContain("VITE_BRAND=client");
 
     await fs.rm(root, { recursive: true, force: true });
   });
 
-  it("create <name> -f <from>:建立繼承主題並提示 public", async () => {
+  it("create <name> -f <from>:建立繼承品牌並提示 public", async () => {
     const { root, ctx } = await setup();
 
     const out = await runCli([
@@ -217,14 +217,14 @@ describe("cli run", () => {
       "-f",
       "base",
       "--dir",
-      ctx.themesDir,
+      ctx.brandsDir,
       "--env-file",
       ctx.envFile,
     ]);
 
-    expect(out).toContain("主題 client-b 已建立(來源:base)");
+    expect(out).toContain("品牌 client-b 已建立(來源:base)");
     expect(out).toContain("public 不會被複製/繼承");
-    expect(readThemeConfig(ctx.themesDir, "client-b").extends).toBe("base");
+    expect(readBrandConfig(ctx.brandsDir, "client-b").extends).toBe("base");
 
     await fs.rm(root, { recursive: true, force: true });
   });
@@ -234,16 +234,16 @@ describe("cli run", () => {
 
     // "AB" 不合法(大寫、太短)→ 重輸 "client-c";來源選單選 2(client)
     const out = await runCli(
-      ["create", "-i", "--dir", ctx.themesDir, "--env-file", ctx.envFile],
+      ["create", "-i", "--dir", ctx.brandsDir, "--env-file", ctx.envFile],
       "AB\nclient-c\n2\n",
     );
 
     expect(out).toContain("僅限小寫英數與 -");
-    const config = readThemeConfig(ctx.themesDir, "client-c");
+    const config = readBrandConfig(ctx.brandsDir, "client-c");
     expect(config.extends).toBeUndefined(); // isolate 不繼承
     expect(
       readFileSync(
-        path.join(ctx.themesDir, "client-c/views/Home.vue"),
+        path.join(ctx.brandsDir, "client-c/views/Home.vue"),
         "utf8",
       ),
     ).toBe("base-home"); // extends 一層補檔
@@ -251,29 +251,29 @@ describe("cli run", () => {
     await fs.rm(root, { recursive: true, force: true });
   });
 
-  it("isolate:互動選單只列出有 extends 的主題", async () => {
+  it("isolate:互動選單只列出有 extends 的品牌", async () => {
     const { root, ctx } = await setup();
 
     const out = await runCli(
-      ["isolate", "--dir", ctx.themesDir, "--env-file", ctx.envFile],
+      ["isolate", "--dir", ctx.brandsDir, "--env-file", ctx.envFile],
       "1\n",
     );
 
     expect(out).toContain("1) client");
     expect(out).not.toContain("1) base");
-    expect(out).toContain("主題 client 已獨立");
-    expect(readThemeConfig(ctx.themesDir, "client").extends).toBeUndefined();
+    expect(out).toContain("品牌 client 已獨立");
+    expect(readBrandConfig(ctx.brandsDir, "client").extends).toBeUndefined();
 
     await fs.rm(root, { recursive: true, force: true });
   });
 
-  it("isolate:沒有可獨立的主題時丟錯", async () => {
+  it("isolate:沒有可獨立的品牌時丟錯", async () => {
     const { root, ctx } = await setup();
-    await isolateTheme(ctx, "client"); // 先把唯一有 extends 的獨立掉
+    await isolateBrand(ctx, "client"); // 先把唯一有 extends 的獨立掉
 
     await expect(
-      runCli(["isolate", "--dir", ctx.themesDir, "--env-file", ctx.envFile]),
-    ).rejects.toThrow("沒有可獨立的主題");
+      runCli(["isolate", "--dir", ctx.brandsDir, "--env-file", ctx.envFile]),
+    ).rejects.toThrow("沒有可獨立的品牌");
 
     await fs.rm(root, { recursive: true, force: true });
   });

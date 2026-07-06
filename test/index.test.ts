@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 import type { ConfigEnv, Plugin, UserConfig } from "vite";
-import { defineThemeConfig } from "../src";
+import { defineBrandConfig } from "../src";
 
 const resolve = async (
   fn: unknown,
   env: ConfigEnv = { mode: "development", command: "serve" },
 ) => (fn as (env: ConfigEnv) => Promise<UserConfig>)(env);
 
-describe("defineThemeConfig", () => {
-  it("合併使用者設定並注入 DEV define 與三個 theme plugins", async () => {
+describe("defineBrandConfig", () => {
+  it("合併使用者設定並注入 DEV define 與三個 white-label plugins", async () => {
     const config = await resolve(
-      defineThemeConfig({}, ({ mode }) => ({
+      defineBrandConfig({}, ({ mode }) => ({
         base: `/${mode}/`,
         plugins: [{ name: "user-plugin" }],
       })),
@@ -22,26 +22,26 @@ describe("defineThemeConfig", () => {
       (config.plugins as Plugin[]).map((p) => p.name),
     ).toEqual([
       "user-plugin",
-      "vite-plugin-theme-switch:alias",
-      "vite-plugin-theme-switch:shadow",
-      "vite-plugin-theme-switch:tailwind",
+      "vite-plugin-white-label:alias",
+      "vite-plugin-white-label:shadow",
+      "vite-plugin-white-label:tailwind",
     ]);
 
-    // alias plugin 注入 @theme 系列
+    // alias plugin 注入 @brand 系列
     const alias = (config.plugins as Plugin[]).find(
-      (p) => p.name === "vite-plugin-theme-switch:alias",
+      (p) => p.name === "vite-plugin-white-label:alias",
     )!;
     const aliasConf = (alias.config as Function)();
     expect(Object.keys(aliasConf.resolve.alias)).toEqual([
-      "@theme",
-      "@theme-components",
-      "@theme-router",
-      "@theme-assets",
+      "@brand",
+      "@brand-components",
+      "@brand-router",
+      "@brand-assets",
     ]);
   });
 
   it("兩個參數皆可省略;production 時 DEV 為 false", async () => {
-    const config = await resolve(defineThemeConfig(), {
+    const config = await resolve(defineBrandConfig(), {
       mode: "production",
       command: "build",
     });

@@ -10,26 +10,26 @@ import { resolveOptions } from "./options";
 import { aliasPlugin } from "./plugins/alias";
 import { shadowPlugin } from "./plugins/shadow";
 import { tailwindPlugin } from "./plugins/tailwind";
-import type { ThemeOptions } from "./types";
+import type { BrandOptions } from "./types";
 
-export type { ThemeOptions, ThemeConfig } from "./types";
+export type { BrandOptions, BrandConfig } from "./types";
 
 /**
- * 包裝 Vite defineConfig:解析當前主題、注入 theme plugins。
+ * 包裝 Vite defineConfig:解析當前品牌、注入 white-label plugins。
  * 移植自 .xgi/core/vite/index.ts 的 useXgiDefineConfig
  * (原版 config 函式會被執行兩次的問題在此已修正:只 resolve 一次)。
  *
  * 使用方式:
  * ```ts
  * // vite.config.ts
- * export default defineThemeConfig(
+ * export default defineBrandConfig(
  *   { aliases: { "@stores": "./src/stores" } },
  *   ({ mode }) => ({ plugins: [vue()] }),
  * );
  * ```
  */
-export const defineThemeConfig = (
-  options: ThemeOptions = {},
+export const defineBrandConfig = (
+  options: BrandOptions = {},
   config: UserConfigExport = {},
 ) =>
   defineConfig(async (confEnv: ConfigEnv) => {

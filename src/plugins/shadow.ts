@@ -2,16 +2,16 @@ import fs from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
 import type { Plugin } from "vite";
-import type { ResolvedThemeOptions, ThemeConfig } from "../types";
-import { normalizePath, readThemeConfig } from "../options";
+import type { ResolvedBrandOptions, BrandConfig } from "../types";
+import { normalizePath, readBrandConfig } from "../options";
 
 /**
- * Shadow plugin:建立並維護 .runtime/theme 硬連結合成目錄。
+ * Shadow plugin:建立並維護 .runtime/brand 硬連結合成目錄。
  * 移植自 .xgi/core/vite/plugins/xgi-plugin-shadow;
  * dev 監聽改用 Vite 自帶的 server.watcher(生命週期由 Vite 管理),不另起 chokidar。
  */
 
-const ignored = (ctx: ResolvedThemeOptions, target: string) => {
+const ignored = (ctx: ResolvedBrandOptions, target: string) => {
   const p = normalizePath(target);
   return ctx.ignore.some((item) => p.includes(item));
 };
@@ -32,7 +32,7 @@ const linkFile = async (src: string, dest: string) => {
     if (err?.code === "EXDEV") {
       // ponytail: 跨 volume 無法 hard link,copy fallback(此模式下內容修改不會自動同步)
       console.warn(
-        `[vite-plugin-theme-switch] hard link failed (cross-device), copied instead: ${dest}`,
+        `[vite-plugin-white-label] hard link failed (cross-device), copied instead: ${dest}`,
       );
       await fs.copyFile(src, dest);
     } else {
@@ -44,18 +44,18 @@ const linkFile = async (src: string, dest: string) => {
 /**
  * 重建 shadow 目錄:
  * 1. 清空 runtimeDir 後重建
- * 2. 連結當前主題所有檔案
- * 3. 若 config.extends 存在,補連結「當前主題沒有覆蓋」的繼承主題檔案
+ * 2. 連結當前品牌所有檔案
+ * 3. 若 config.extends 存在,補連結「當前品牌沒有覆蓋」的繼承品牌檔案
  */
 export const createShadow = async (
-  ctx: ResolvedThemeOptions,
-  themeConfig: ThemeConfig,
+  ctx: ResolvedBrandOptions,
+  brandConfig: BrandConfig,
 ) => {
   await fs.rm(ctx.runtimeDir, { recursive: true, force: true });
   await fs.mkdir(ctx.runtimeDir, { recursive: true });
 
-  const linkTheme = async (theme: string) => {
-    const dir = path.join(ctx.themesDir, theme);
+  const linkBrand = async (brand: string) => {
+    const dir = path.join(ctx.brandsDir, brand);
     if (!existsSync(dir)) return;
 
     const files = await fs.readdir(dir, {
@@ -74,23 +74,23 @@ export const createShadow = async (
     }
   };
 
-  // 先鋪繼承主題,再讓當前主題覆蓋 —— 順序即優先級
-  if (themeConfig.extends) {
-    await linkTheme(themeConfig.extends);
+  // 先鋪繼承品牌,再讓當前品牌覆蓋 —— 順序即優先級
+  if (brandConfig.extends) {
+    await linkBrand(brandConfig.extends);
   }
-  await linkTheme(ctx.theme);
+  await linkBrand(ctx.brand);
 };
 
 /**
- * dev 模式:處理 themes/<theme> 與 themes/<extends> 的檔案事件,維護 runtime 連結。
+ * dev 模式:處理 brands/<brand> 與 brands/<extends> 的檔案事件,維護 runtime 連結。
  * 回傳的 handler 掛在 Vite server.watcher 的 "all" 事件上,非相關路徑一律 no-op。
  *
  * 事件對應:
- * - theme add      → 直接 link(蓋掉原本連到 extends 的檔)
- * - theme unlink   → 移除 runtime 檔;若 extends 有同名檔則回退連 extends 版本
- * - extends add    → 僅當 theme 沒有同名檔時才 link
- * - extends unlink → 僅當 theme 沒有同名檔時才移除 runtime 檔
- * - change         → 就地寫入因同 inode 天然生效;原子寫入會換 inode,偵測後重連
+ * - brand add       → 直接 link(蓋掉原本連到 extends 的檔)
+ * - brand unlink    → 移除 runtime 檔;若 extends 有同名檔則回退連 extends 版本
+ * - extends add      → 僅當 brand 沒有同名檔時才 link
+ * - extends unlink   → 僅當 brand 沒有同名檔時才移除 runtime 檔
+ * - change          → 就地寫入因同 inode 天然生效;原子寫入會換 inode,偵測後重連
  */
 /** file 在 dir 之下時回傳相對路徑,否則 null */
 const relIn = (dir: string, file: string) => {
@@ -119,38 +119,38 @@ const relinkIfStale = async (src: string, dest: string) => {
 };
 
 export const createShadowHandler = (
-  ctx: ResolvedThemeOptions,
-  themeConfig: ThemeConfig,
+  ctx: ResolvedBrandOptions,
+  brandConfig: BrandConfig,
 ) => {
-  const themeDir = path.join(ctx.themesDir, ctx.theme);
-  const extendsDir = themeConfig.extends
-    ? path.join(ctx.themesDir, themeConfig.extends)
+  const brandDir = path.join(ctx.brandsDir, ctx.brand);
+  const extendsDir = brandConfig.extends
+    ? path.join(ctx.brandsDir, brandConfig.extends)
     : null;
 
   return async (evt: string, file: string) => {
     if (ignored(ctx, file)) return;
 
     if (evt === "change") {
-      const themeRel = relIn(themeDir, file);
+      const brandRel = relIn(brandDir, file);
       const rel =
-        themeRel ?? (extendsDir ? relIn(extendsDir, file) : null);
+        brandRel ?? (extendsDir ? relIn(extendsDir, file) : null);
       if (!rel) return;
-      // extends 檔被當前主題覆蓋 → runtime 連的是 theme 版本,不受影響
-      if (!themeRel && existsSync(path.join(themeDir, rel))) return;
+      // extends 檔被當前品牌覆蓋 → runtime 連的是 brand 版本,不受影響
+      if (!brandRel && existsSync(path.join(brandDir, rel))) return;
       await relinkIfStale(file, path.join(ctx.runtimeDir, rel));
       return;
     }
 
     if (evt !== "add" && evt !== "unlink") return;
 
-    const themeRel = relIn(themeDir, file);
-    if (themeRel) {
-      const runtimeFile = path.join(ctx.runtimeDir, themeRel);
+    const brandRel = relIn(brandDir, file);
+    if (brandRel) {
+      const runtimeFile = path.join(ctx.runtimeDir, brandRel);
       if (evt === "add") {
         await linkFile(file, runtimeFile);
       } else {
         if (existsSync(runtimeFile)) await fs.unlink(runtimeFile);
-        const extendsFile = extendsDir && path.join(extendsDir, themeRel);
+        const extendsFile = extendsDir && path.join(extendsDir, brandRel);
         if (extendsFile && existsSync(extendsFile)) {
           await linkFile(extendsFile, runtimeFile);
         }
@@ -160,8 +160,8 @@ export const createShadowHandler = (
 
     const extRel = extendsDir && relIn(extendsDir, file);
     if (!extRel) return;
-    // 當前主題有同名檔 → runtime 連的是 theme 版本,extends 的變動不影響
-    if (existsSync(path.join(themeDir, extRel))) return;
+    // 當前品牌有同名檔 → runtime 連的是 brand 版本,extends 的變動不影響
+    if (existsSync(path.join(brandDir, extRel))) return;
 
     const runtimeFile = path.join(ctx.runtimeDir, extRel);
     if (evt === "add") {
@@ -173,45 +173,45 @@ export const createShadowHandler = (
 };
 
 export const shadowPlugin = (
-  ctx: ResolvedThemeOptions,
+  ctx: ResolvedBrandOptions,
   onReady: () => void,
 ): Plugin => {
-  let themeConfig: ThemeConfig = {};
+  let brandConfig: BrandConfig = {};
 
   return {
-    name: "vite-plugin-theme-switch:shadow",
+    name: "vite-plugin-white-label:shadow",
     enforce: "pre",
 
     config() {
       return {
-        publicDir: path.join(ctx.themesDir, ctx.theme, "public"),
+        publicDir: path.join(ctx.brandsDir, ctx.brand, "public"),
       };
     },
 
     async configResolved() {
-      themeConfig = readThemeConfig(ctx.themesDir, ctx.theme);
-      await createShadow(ctx, themeConfig);
+      brandConfig = readBrandConfig(ctx.brandsDir, ctx.brand);
+      await createShadow(ctx, brandConfig);
       onReady();
     },
 
     configureServer(server) {
-      server.watcher.add(ctx.themesDir);
-      const handler = createShadowHandler(ctx, themeConfig);
-      const themeDir = path.join(ctx.themesDir, ctx.theme);
-      const extendsDir = themeConfig.extends
-        ? path.join(ctx.themesDir, themeConfig.extends)
+      server.watcher.add(ctx.brandsDir);
+      const handler = createShadowHandler(ctx, brandConfig);
+      const brandDir = path.join(ctx.brandsDir, ctx.brand);
+      const extendsDir = brandConfig.extends
+        ? path.join(ctx.brandsDir, brandConfig.extends)
         : null;
 
       server.watcher.on("all", (evt, file) => {
         (async () => {
           await handler(evt, file);
 
-          // 模組圖掛的是 runtime 路徑,themes/ 的事件 Vite 不會自己觸發 HMR;
+          // 模組圖掛的是 runtime 路徑,brands/ 的事件 Vite 不會自己觸發 HMR;
           // 且原子寫入存檔可能以 unlink+add 而非 change 呈現 —— 因此在連結
           // 維護完成後,由這裡統一對 runtime 模組觸發 reload。
           if (ignored(ctx, file)) return;
           const rel =
-            relIn(themeDir, file) ??
+            relIn(brandDir, file) ??
             (extendsDir ? relIn(extendsDir, file) : null);
           if (!rel) return;
           const runtimeFile = path.join(ctx.runtimeDir, rel);
@@ -223,31 +223,31 @@ export const shadowPlugin = (
             await Promise.all([...mods].map((m) => server.reloadModule(m)));
           }
         })().catch((err) =>
-          console.error("[vite-plugin-theme-switch]", err),
+          console.error("[vite-plugin-white-label]", err),
         );
       });
     },
 
-    /** 以主題 config.jsonc 的 title 取代 index.html 中的 =VITE_TITLE= 佔位符 */
+    /** 以品牌 config.jsonc 的 title 取代 index.html 中的 =VITE_TITLE= 佔位符 */
     transformIndexHtml(html) {
-      return themeConfig.title
-        ? html.replace("=VITE_TITLE=", themeConfig.title)
+      return brandConfig.title
+        ? html.replace("=VITE_TITLE=", brandConfig.title)
         : html;
     },
 
     /**
      * HMR 統一由 configureServer 的 watcher 觸發(reloadModule),
-     * 這裡只抑制 Vite 對 themes/ 與 runtime 檔案的預設 hot update,避免雙重觸發
+     * 這裡只抑制 Vite 對 brands/ 與 runtime 檔案的預設 hot update,避免雙重觸發
      * (macOS 上同 inode 的變更會兩條路徑都發事件;框架無關,.vue/.tsx/css 通用)。
      */
     handleHotUpdate({ file }) {
-      const themeDir = path.join(ctx.themesDir, ctx.theme);
-      const extendsDir = themeConfig.extends
-        ? path.join(ctx.themesDir, themeConfig.extends)
+      const brandDir = path.join(ctx.brandsDir, ctx.brand);
+      const extendsDir = brandConfig.extends
+        ? path.join(ctx.brandsDir, brandConfig.extends)
         : null;
 
       if (
-        relIn(themeDir, file) ||
+        relIn(brandDir, file) ||
         (extendsDir && relIn(extendsDir, file)) ||
         relIn(ctx.runtimeDir, file)
       ) {

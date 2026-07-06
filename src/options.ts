@@ -1,19 +1,19 @@
 import path from "path";
 import { existsSync, readFileSync } from "fs";
 import json5 from "json5";
-import type { ResolvedThemeOptions, ThemeConfig, ThemeOptions } from "./types";
+import type { ResolvedBrandOptions, BrandConfig, BrandOptions } from "./types";
 
 export const resolveOptions = (
-  options: ThemeOptions,
+  options: BrandOptions,
   env: Record<string, string>,
   root = process.cwd(),
-): ResolvedThemeOptions => {
-  const envKey = options.envKey ?? "VITE_THEME";
+): ResolvedBrandOptions => {
+  const envKey = options.envKey ?? "VITE_BRAND";
 
   return {
-    themesDir: path.resolve(root, options.themesDir ?? "./themes"),
-    runtimeDir: path.resolve(root, options.runtimeDir ?? "./.runtime/theme"),
-    theme: env[envKey] ?? options.defaultTheme ?? "default",
+    brandsDir: path.resolve(root, options.brandsDir ?? "./brands"),
+    runtimeDir: path.resolve(root, options.runtimeDir ?? "./.runtime/brand"),
+    brand: env[envKey] ?? options.defaultBrand ?? "default",
     ignore: options.ignore ?? [".DS_Store", "public/"],
     tailwind: options.tailwind
       ? {
@@ -21,7 +21,7 @@ export const resolveOptions = (
             root,
             (typeof options.tailwind === "object" &&
               options.tailwind.presetPath) ||
-              "./.theme-env/tailwind.preset.ts",
+              "./.brand-env/tailwind.preset.ts",
           ),
         }
       : false,
@@ -29,13 +29,13 @@ export const resolveOptions = (
   };
 };
 
-/** 讀取 themes/<theme>/config.jsonc(或 config.json),不存在則回傳 {} */
-export const readThemeConfig = (
-  themesDir: string,
-  theme: string,
-): ThemeConfig => {
+/** 讀取 brands/<brand>/config.jsonc(或 config.json),不存在則回傳 {} */
+export const readBrandConfig = (
+  brandsDir: string,
+  brand: string,
+): BrandConfig => {
   for (const file of ["config.jsonc", "config.json"]) {
-    const p = path.join(themesDir, theme, file);
+    const p = path.join(brandsDir, brand, file);
     if (existsSync(p)) {
       return json5.parse(readFileSync(p, "utf8"));
     }
