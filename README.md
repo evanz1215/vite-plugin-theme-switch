@@ -1,40 +1,42 @@
 # vite-plugin-white-label
 
-Vite 白牌(white-label / multi-brand)系統,框架無關(Vue / React 皆可)。以 **hard link 合成的 shadow 目錄** 實現:
+[繁體中文](./README.zh-TW.md) | English | [日本語](./README.ja.md)
 
-- 🏷️ **品牌切換** — 一個環境變數決定當前品牌,業務程式碼零改動
-- 🧬 **品牌繼承(`extends`)** — 客戶品牌只放差異檔,其餘自動沿用基底品牌
-- ⚡ **即時 HMR** — 編輯 `brands/` 檔案即時熱更新,自動處理編輯器原子寫入造成的斷鏈
-- 📦 **多品牌批次打包** — 一個指令把每個品牌各自輸出成可獨立部署的完整站點
-- 🔧 **CLI 管理工具** — 互動式切換、建立、獨立化品牌
+A framework-agnostic (Vue / React) white-label / multi-brand system for Vite, built on a **shadow directory composed with hard links**:
 
-> 需求:Node >= 20.12、Vite >= 5。除 `json5` 外零依賴。
+- 🏷️ **Brand switching** — one environment variable decides the active brand, zero changes to business code
+- 🧬 **Brand inheritance (`extends`)** — a client brand only needs to ship the files that differ; everything else falls back to the base brand
+- ⚡ **Instant HMR** — editing files under `brands/` hot-reloads immediately, with automatic relinking when editors break hard links via atomic writes
+- 📦 **Batch multi-brand build** — one command outputs every brand as its own fully deployable site
+- 🔧 **CLI management tool** — interactive switching, creation, and isolation of brands
 
-## 安裝
+> Requirements: Node >= 20.12, Vite >= 5. Zero dependencies except `json5`.
+
+## Install
 
 ```bash
 npm install -D vite-plugin-white-label
-# 或
+# or
 pnpm add -D vite-plugin-white-label
 ```
 
-## 快速開始
+## Quick start
 
-### 1. 設定 vite.config.ts
+### 1. Configure vite.config.ts
 
 ```ts
 import vue from "@vitejs/plugin-vue";
 import { defineBrandConfig } from "vite-plugin-white-label";
 
 export default defineBrandConfig(
-  {}, // 品牌選項(見下方「選項」)
+  {}, // brand options (see "Options" below)
   ({ mode }) => ({
     plugins: [vue()],
   }),
 );
 ```
 
-React 專案只是換掉框架 plugin,其餘完全相同:
+For React projects, just swap the framework plugin — everything else stays the same:
 
 ```ts
 import react from "@vitejs/plugin-react";
@@ -43,7 +45,7 @@ import { defineBrandConfig } from "vite-plugin-white-label";
 export default defineBrandConfig({}, { plugins: [react()] });
 ```
 
-### 2. 在 package.json 加入 CLI script
+### 2. Add a CLI script to package.json
 
 ```json
 {
@@ -54,125 +56,125 @@ export default defineBrandConfig({}, { plugins: [react()] });
 }
 ```
 
-之後所有品牌操作都透過這個 script:
+All brand operations go through this script:
 
 ```bash
-pnpm brand switch            # pnpm / yarn:參數直接接在後面
-npm run brand -- switch      # npm:記得加 -- 才能傳參數
+pnpm brand switch            # pnpm / yarn: pass args directly
+npm run brand -- switch      # npm: remember the -- to pass args
 ```
 
-### 3. 建立品牌目錄
+### 3. Create the brand directories
 
 ```
 brands/
-├── base/                     # 基底品牌(完整)
+├── base/                     # base brand (complete)
 │   ├── config.jsonc          # { "title": "Base App" }
 │   ├── components/
 │   │   ├── Banner.vue
 │   │   └── Footer.vue
 │   └── assets/
-└── client-a/                 # 客戶品牌(只放差異檔)
+└── client-a/                 # client brand (only the diff files)
     ├── config.jsonc          # { "title": "Client A", "extends": "base" }
     └── components/
-        └── Banner.vue        # 覆蓋 base 的 Banner,Footer 自動沿用 base
+        └── Banner.vue        # overrides base's Banner; Footer falls back to base
 ```
 
-### 4. 業務程式碼透過 alias 引用品牌
+### 4. Reference the brand from business code via the alias
 
 ```vue
 <script setup lang="ts">
-// 永遠 import @brand,不需要知道當前是哪個品牌
+// always import @brand, no need to know which brand is active
 import Banner from "@brand-components/Banner.vue";
 import Footer from "@brand-components/Footer.vue";
 </script>
 ```
 
-React 同理(品牌檔放 `.tsx` / `.jsx`):
+Same for React (brand files use `.tsx` / `.jsx`):
 
 ```tsx
 import Banner from "@brand-components/Banner";
 import Footer from "@brand-components/Footer";
 ```
 
-### 5. 切換品牌並啟動
+### 5. Switch brand and start
 
 ```bash
-pnpm brand switch client-a   # 改寫 .env.development 的 VITE_BRAND
-pnpm dev                     # 以 client-a 品牌啟動
+pnpm brand switch client-a   # rewrites VITE_BRAND in .env.development
+pnpm dev                     # starts with the client-a brand
 ```
 
-## CLI 指令
+## CLI commands
 
-以下範例用 `pnpm brand <指令>`;npm 使用者請改成 `npm run brand -- <指令>`。
+Examples below use `pnpm brand <command>`; npm users should use `npm run brand -- <command>`.
 
-### `switch` — 切換品牌
+### `switch` — switch brand
 
 ```bash
-pnpm brand switch            # 互動選單(當前品牌會標示且不可選)
-pnpm brand switch client-a   # 直接切換
+pnpm brand switch            # interactive menu (current brand is marked and unselectable)
+pnpm brand switch client-a   # switch directly
 ```
 
-改寫 env 檔(預設 `.env.development`)的 `VITE_BRAND`,其他變數保留不動。
+Rewrites `VITE_BRAND` in the env file (default `.env.development`); other variables are left untouched.
 
-### `create` — 建立新品牌
+### `create` — create a new brand
 
 ```bash
-pnpm brand create                        # 互動輸入名稱、選擇來源
-pnpm brand create client-b --from base   # 繼承模式:只建 config.jsonc,差異檔之後再加
-pnpm brand create client-b -f base -i    # isolate 模式:完整複製來源(不設 extends)
+pnpm brand create                        # interactive: enter name, choose source
+pnpm brand create client-b --from base   # inheritance mode: only creates config.jsonc, add diff files later
+pnpm brand create client-b -f base -i    # isolate mode: fully copies the source (no extends set)
 ```
 
-繼承模式(預設)建立的是「薄品牌」——只有一個 `config.jsonc` 標記 `extends`,之後把要覆蓋的檔案放進去即可。
+Inheritance mode (default) creates a "thin brand" — just a `config.jsonc` marking `extends`; add whichever files you need to override afterward.
 
-### `isolate` — 繼承品牌獨立化
+### `isolate` — detach an inherited brand
 
 ```bash
-pnpm brand isolate           # 互動選單(只列出有 extends 的品牌)
+pnpm brand isolate           # interactive menu (lists only brands with extends)
 pnpm brand isolate client-a
 ```
 
-把 `extends` 品牌中未被覆蓋的檔案實體複製進來,並移除 `extends` 設定,讓品牌完全自包含。
+Physically copies in the files from the `extends` brand that weren't already overridden, then removes the `extends` setting, making the brand fully self-contained.
 
-### `build` — 多品牌批次打包
+### `build` — batch multi-brand build
 
 ```bash
-pnpm brand build base client-a     # 空白分隔
-pnpm brand build base,client-a     # 逗號分隔亦可
+pnpm brand build base client-a     # space-separated
+pnpm brand build base,client-a     # comma-separated also works
 ```
 
-每個品牌各自輸出完整站點到 `dist/<brand>/`,可直接部署為各客戶的站台根目錄。品牌間依序打包(shadow 目錄是全域單例),CLI 已處理。
+Each brand outputs a complete site to `dist/<brand>/`, ready to deploy as-is as each client's site root. Brands are built sequentially (the shadow directory is a global singleton) — the CLI handles this for you.
 
-單一品牌也可以不走 CLI,直接用環境變數:
+A single brand can also be built without the CLI, using the environment variable directly:
 
 ```bash
 VITE_BRAND=client-a vite build               # macOS / Linux
 $env:VITE_BRAND = "client-a"; pnpm vite build  # Windows PowerShell
 ```
 
-> 注意:production 模式不會讀 `.env.development`,所以裸跑 `vite build` 時品牌必須由環境變數指定;沒指定會 fallback 到 `default` 品牌。另外 `vite build <name>` 的位置參數是 Vite 的「專案根目錄」而不是品牌名稱——品牌名稱只能給 `vite-brand build`。
+> Note: production mode does not read `.env.development`, so when running bare `vite build` the brand must be given via the environment variable — omitting it falls back to the `default` brand. Also, the positional argument of `vite build <name>` is Vite's "project root", not the brand name — the brand name can only be passed to `vite-brand build`.
 
-### 通用選項
+### Common options
 
-| 選項 | 預設 | 說明 |
+| Option | Default | Description |
 | --- | --- | --- |
-| `--dir` | `./brands` | brands 目錄 |
-| `--env-file` | `.env.development` | 品牌環境變數檔 |
-| `--env-key` | `VITE_BRAND` | 品牌環境變數名 |
-| `--out-dir`, `-o` | `dist` | `build` 的輸出根目錄 |
-| `--config`, `-c` | 自動尋找 | `build` 用的 vite config 路徑 |
+| `--dir` | `./brands` | brands directory |
+| `--env-file` | `.env.development` | brand env file |
+| `--env-key` | `VITE_BRAND` | env variable name holding the brand |
+| `--out-dir`, `-o` | `dist` | output root for `build` |
+| `--config`, `-c` | auto-detected | vite config path used by `build` |
 
-## 選項(`defineBrandConfig` 第一個參數)
+## Options (`defineBrandConfig` first argument)
 
 ```ts
 export default defineBrandConfig(
   {
-    brandsDir: "./brands",           // 品牌目錄
-    runtimeDir: "./.runtime/brand",  // shadow 合成目錄(記得加進 .gitignore)
-    envKey: "VITE_BRAND",            // 讀取當前品牌的環境變數名
-    defaultBrand: "default",         // 環境變數未設定時的預設品牌
-    ignore: [".DS_Store", "public/"], // 不進 shadow 的檔名/路徑片段
-    tailwind: false,                 // Tailwind v3 preset 同步(v4 不需要,見下方)
-    aliases: {                       // 專案私有 alias(可選)
+    brandsDir: "./brands",           // brands directory
+    runtimeDir: "./.runtime/brand",  // shadow composition directory (add to .gitignore)
+    envKey: "VITE_BRAND",            // env variable name that holds the active brand
+    defaultBrand: "default",         // fallback brand when the env variable isn't set
+    ignore: [".DS_Store", "public/"], // filenames/path fragments excluded from the shadow
+    tailwind: false,                 // Tailwind v3 preset sync (not needed for v4, see below)
+    aliases: {                       // project-specific aliases (optional)
       "@stores": "./src/stores",
     },
   },
@@ -182,11 +184,11 @@ export default defineBrandConfig(
 );
 ```
 
-所有欄位皆可省略,上面即預設值。
+All fields are optional; the above shows the defaults.
 
-### 內建 alias
+### Built-in aliases
 
-| alias | 指向 |
+| Alias | Points to |
 | --- | --- |
 | `@brand` | `<runtimeDir>` |
 | `@brand-components` | `<runtimeDir>/components` |
@@ -195,30 +197,30 @@ export default defineBrandConfig(
 
 ### config.jsonc
 
-每個品牌目錄下的 `config.jsonc`(或 `config.json`,支援註解):
+Each brand directory has a `config.jsonc` (or `config.json`, comments supported):
 
 ```jsonc
 {
-  "title": "Client A",   // 取代 index.html 中的 =VITE_TITLE= 佔位符
-  "extends": "base"      // 繼承的品牌名稱(可省略)
+  "title": "Client A",   // replaces the =VITE_TITLE= placeholder in index.html
+  "extends": "base"      // name of the inherited brand (optional)
 }
 ```
 
-index.html 用法:
+Usage in index.html:
 
 ```html
 <title>=VITE_TITLE=</title>
 ```
 
-### public 目錄
+### public directory
 
-`brands/<brand>/public` 會自動設為 Vite 的 `publicDir`。public 不進 shadow、也不參與繼承——每個品牌的 public 需自行維護完整內容。
+`brands/<brand>/public` is automatically set as Vite's `publicDir`. `public` is excluded from the shadow and does not participate in inheritance — each brand must maintain its own complete `public` contents.
 
-### Tailwind 品牌化
+### Tailwind branding
 
-#### v4(CSS-first)— 不需要任何選項
+#### v4 (CSS-first) — no options needed
 
-v4 的主題設定就是 CSS 檔,shadow 目錄與繼承機制直接涵蓋,零設定。每個品牌放一份 token 檔:
+v4's theme configuration is just a CSS file, so the shadow directory and inheritance mechanism cover it directly with zero setup. Each brand ships a token file:
 
 ```css
 /* brands/base/tailwind.css */
@@ -227,9 +229,9 @@ v4 的主題設定就是 CSS 檔,shadow 目錄與繼承機制直接涵蓋,零設
 }
 ```
 
-(這裡的 `@theme` 是 Tailwind v4 自己的 CSS at-rule,跟本套件的品牌概念無關,語法上由 Tailwind 解析。)
+(The `@theme` here is Tailwind v4's own CSS at-rule, unrelated to this plugin's brand concept — it's parsed by Tailwind.)
 
-根 CSS 以相對路徑 import runtime 目錄那份(`@import` 由 Tailwind 解析,請用相對路徑而非 alias):
+The root CSS imports the runtime directory's copy using a relative path (`@import` is resolved by Tailwind, so use a relative path, not an alias):
 
 ```css
 /* src/style.css */
@@ -237,18 +239,18 @@ v4 的主題設定就是 CSS 檔,shadow 目錄與繼承機制直接涵蓋,零設
 @import "../.runtime/brand/tailwind.css";
 ```
 
-客戶品牌要換色就放一份自己的 `tailwind.css` 覆蓋;沒放就自動沿用 `extends` 品牌的。編輯 token 一樣走 HMR 即時生效。注意:基底品牌必須有這個檔案(import 目標要存在)。
+A client brand that wants different colors just ships its own `tailwind.css` to override; if it doesn't, it automatically falls back to the `extends` brand's file. Editing tokens is hot-reloaded the same way. Note: the base brand must have this file (the import target must exist).
 
-#### v3(JS config)— `tailwind` 選項
+#### v3 (JS config) — `tailwind` option
 
-品牌各自帶 `tailwind.config.ts` 時開啟:
+Enable this when each brand ships its own `tailwind.config.ts`:
 
 ```ts
 defineBrandConfig({ tailwind: true }, /* ... */);
-// 或自訂輸出位置:{ tailwind: { presetPath: "./.brand-env/tailwind.preset.ts" } }
+// or customize the output path: { tailwind: { presetPath: "./.brand-env/tailwind.preset.ts" } }
 ```
 
-plugin 會在 shadow 建好後,把 `<runtimeDir>/tailwind.config.ts` 複製到 `presetPath`(品牌沒有時寫入空 preset),根目錄的 `tailwind.config.ts` 引用它即可:
+Once the shadow is built, the plugin copies `<runtimeDir>/tailwind.config.ts` to `presetPath` (writing an empty preset if the brand doesn't have one). Reference it from the root `tailwind.config.ts`:
 
 ```ts
 import brandPreset from "./.brand-env/tailwind.preset";
@@ -259,34 +261,34 @@ export default {
 };
 ```
 
-### DEV 常數
+### DEV constant
 
-plugin 會注入全域常數 `DEV`(`mode === "development"`),可在業務程式碼直接使用;TypeScript 專案可在 `env.d.ts` 補上:
+The plugin injects a global constant `DEV` (`mode === "development"`) that can be used directly in business code; TypeScript projects can declare it in `env.d.ts`:
 
 ```ts
 declare const DEV: boolean;
 ```
 
-## 運作原理
+## How it works
 
-啟動時將 `brands/<brand>` 的檔案以 **hard link** 連進 `<runtimeDir>`;若品牌設定 `extends`,繼承品牌的檔案僅在「未被當前品牌覆蓋」時補鏈。`@brand` 系列 alias 指向合成後的目錄,業務程式碼因此對「當前是哪個品牌」無感。
+On startup, the files under `brands/<brand>` are **hard-linked** into `<runtimeDir>`; if the brand sets `extends`, files from the inherited brand are linked in only where the current brand hasn't overridden them. The `@brand` family of aliases point at this composed directory, so business code stays unaware of which brand is currently active.
 
-dev 模式下由 Vite server.watcher 維護連結並觸發 HMR:模組圖裡掛的是 runtime 路徑,`brands/` 的檔案事件在連結維護完成後,由 plugin 對應到 runtime 模組主動 reload(框架無關,`.vue`/`.tsx`/CSS 通用)。編輯器以原子寫入存檔(先寫暫存檔再 rename,如 JetBrains 的 safe write)會換掉 inode 造成 hard link 指向舊內容,plugin 會比對 inode 自動重連。
+In dev mode, Vite's `server.watcher` maintains the links and drives HMR: the module graph holds runtime paths, so once a link update for a file under `brands/` is finished, the plugin maps it to the corresponding runtime module and triggers a reload (framework-agnostic — works uniformly for `.vue`/`.tsx`/CSS). Editors that save via atomic writes (write to a temp file, then rename — e.g. JetBrains' safe write) swap out the inode, breaking the hard link; the plugin detects the inode change and relinks automatically.
 
-| 事件 | 行為 |
+| Event | Behavior |
 | --- | --- |
-| 品牌新增檔案 | 連進 runtime(覆蓋原本連到 extends 的檔) |
-| 品牌刪除檔案 | 移除 runtime 檔;extends 有同名檔則回退連 extends 版本 |
-| extends 新增檔案 | 僅當品牌沒有同名檔時補鏈 |
-| extends 刪除檔案 | 僅當品牌沒有同名檔時斷鏈 |
-| 檔案內容變更 | 同 inode 天然生效;原子寫入換 inode 時自動重連 |
+| File added in a brand | Linked into runtime (overrides any file linked from `extends`) |
+| File removed from a brand | Runtime file removed; if `extends` has a file of the same name, falls back to linking that |
+| File added in `extends` | Linked in only if the brand has no file of the same name |
+| File removed from `extends` | Unlinked only if the brand has no file of the same name |
+| File content changed | Same inode takes effect naturally; an inode swap from an atomic write triggers automatic relinking |
 
-## 限制
+## Limitations
 
-- `brands/` 與 `runtimeDir` 必須位於**同一磁碟分割區**(hard link 限制);跨分割區時自動 fallback 為 copy,但該模式下內容修改不會自動同步。
-- 品牌繼承只有一層:`extends` 指向的品牌自己的 `extends` 不會被遞迴解析。
-- `runtimeDir`(預設 `.runtime/`)是產物目錄,請加進 `.gitignore`。
+- `brands/` and `runtimeDir` must be on the **same filesystem partition** (a hard-link constraint); across partitions it automatically falls back to copying, but in that mode content changes are not automatically synced.
+- Brand inheritance is only one level deep: an `extends` brand's own `extends` is not resolved recursively.
+- `runtimeDir` (default `.runtime/`) is a build artifact directory — add it to `.gitignore`.
 
 ## License
 
-[0BSD](./LICENSE) — 可自由使用、修改、散布(含商用與閉源),無需保留授權聲明,無任何附帶條件。
+[0BSD](./LICENSE) — free to use, modify, and distribute (including commercial and closed-source use), with no requirement to retain the license notice and no other conditions attached.
