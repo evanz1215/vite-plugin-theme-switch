@@ -63,12 +63,16 @@ export const createShadow = async (
       withFileTypes: true,
     });
 
-    for (const f of files) {
-      if (!f.isFile()) continue;
-      const src = path.join(f.parentPath, f.name);
-      if (ignored(ctx, src)) continue;
-      await linkFile(src, path.join(ctx.runtimeDir, path.relative(dir, src)));
-    }
+    // 同一品牌內每個檔案的目的路徑互不重疊,可平行 link(跨品牌順序仍序列,見下方呼叫處)
+    await Promise.all(
+      files
+        .filter((f) => f.isFile())
+        .map((f) => path.join(f.parentPath, f.name))
+        .filter((src) => !ignored(ctx, src))
+        .map((src) =>
+          linkFile(src, path.join(ctx.runtimeDir, path.relative(dir, src))),
+        ),
+    );
   };
 
   // 先鋪繼承品牌,再讓當前品牌覆蓋 —— 順序即優先級
