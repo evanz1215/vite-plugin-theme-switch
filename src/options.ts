@@ -3,6 +3,8 @@ import { existsSync, readFileSync } from "fs";
 import json5 from "json5";
 import type { ResolvedBrandOptions, BrandConfig, BrandOptions } from "./types";
 
+export const DEFAULT_IGNORE = [".DS_Store", "public/"];
+
 export const resolveOptions = (
   options: BrandOptions,
   env: Record<string, string>,
@@ -14,7 +16,7 @@ export const resolveOptions = (
     brandsDir: path.resolve(root, options.brandsDir ?? "./brands"),
     runtimeDir: path.resolve(root, options.runtimeDir ?? "./.runtime/brand"),
     brand: env[envKey] ?? options.defaultBrand ?? "default",
-    ignore: options.ignore ?? [".DS_Store", "public/"],
+    ignore: options.ignore ?? DEFAULT_IGNORE,
     tailwind: options.tailwind
       ? {
           presetPath: path.resolve(

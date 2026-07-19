@@ -290,6 +290,18 @@ In dev mode, Vite's `server.watcher` maintains the links and drives HMR: the mod
 - Brand inheritance is only one level deep: an `extends` brand's own `extends` is not resolved recursively.
 - `runtimeDir` (default `.runtime/`) is a build artifact directory — add it to `.gitignore`.
 
+## Examples
+
+Working Vue and React demos live under [`examples/`](./examples), each with a `base` and a `client-a` brand (the latter overrides `Banner` and inherits `Footer` via `extends`) — a hands-on version of the Quick start above.
+
+```bash
+pnpm install
+cd examples/vue   # or examples/react
+pnpm dev
+pnpm brand switch client-a && pnpm dev   # see the brand change
+pnpm brand build base client-a           # batch build both brands
+```
+
 ## License
 
 [0BSD](./LICENSE) — free to use, modify, and distribute (including commercial and closed-source use), with no requirement to retain the license notice and no other conditions attached.

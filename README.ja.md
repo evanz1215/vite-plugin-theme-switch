@@ -290,6 +290,18 @@ dev モードでは Vite の `server.watcher` がリンクを維持し、HMR を
 - ブランド継承は1階層のみです。`extends` 先のブランドがさらに `extends` を持っていても再帰的には解決されません。
 - `runtimeDir`(デフォルト `.runtime/`)は生成物用のディレクトリです。`.gitignore` に追加してください。
 
+## Examples
+
+[`examples/`](./examples) に Vue と React の動作する demo があります。それぞれ `base` と `client-a` の2ブランドを持ち(`client-a` は `Banner` を上書きし、`extends` で `Footer` を継承)、上記 Quick start を実際に動かせる形にしたものです。
+
+```bash
+pnpm install
+cd examples/vue   # または examples/react
+pnpm dev
+pnpm brand switch client-a && pnpm dev   # ブランド切り替えを確認
+pnpm brand build base client-a           # 2ブランドを一括ビルド
+```
+
 ## License
 
 [0BSD](./LICENSE) — 使用・改変・配布(商用および非公開ソースでの利用を含む)を自由に行えます。ライセンス表示の保持義務やその他の付帯条件は一切ありません。

@@ -1,0 +1,3 @@
+{
+  "title": "Base App", // replaces the =VITE_TITLE= placeholder in index.html
+}

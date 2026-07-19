@@ -6,7 +6,7 @@ import fs from "fs/promises";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 import { parseEnv } from "node:util";
-import { normalizePath, readBrandConfig } from "../options";
+import { DEFAULT_IGNORE, normalizePath, readBrandConfig } from "../options";
 import type { BrandConfig } from "../types";
 
 export interface CliContext {
@@ -15,8 +15,6 @@ export interface CliContext {
   envFile: string;
   envKey: string;
 }
-
-const IGNORE = [".DS_Store", "public/"];
 
 export const listBrands = async (brandsDir: string) => {
   if (!existsSync(brandsDir)) return [];
@@ -50,7 +48,7 @@ const copyBrandFiles = (srcDir: string, destDir: string, overwrite: boolean) =>
     // 補尾斜線讓 "public/" 能整棵過濾掉目錄本身(不留空目錄)
     filter: (src) => {
       const p = normalizePath(src) + "/";
-      return !IGNORE.some((item) => p.includes(item));
+      return !DEFAULT_IGNORE.some((item) => p.includes(item));
     },
   });
 
